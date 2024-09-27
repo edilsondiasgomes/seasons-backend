@@ -2,7 +2,7 @@ import client from "./../database.js";
 
 export const getAllTypes = async (req, res) => {
     try {
-        const result = await client.query(`Select * FROM types`);
+        const result = await client.query(`Select * FROM type_accommodation`);
         const data = result.rows;
         res.status(200).send(data)
 
