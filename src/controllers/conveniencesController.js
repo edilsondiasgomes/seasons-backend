@@ -1,6 +1,6 @@
 import client from "./../database.js";
 
-export const getAllConveniences = async (req, res) => {
+export const selectAllConveniences = async (req, res) => {
     try {
         const result = await client.query('SELECT * from conveniences');
         const data = result.rows;
@@ -8,7 +8,6 @@ export const getAllConveniences = async (req, res) => {
 
     } catch (error) {
         res.status(500).send('Erro ao buscar dados!')
-
     }
 }
 
@@ -55,14 +54,4 @@ export const updateConvenience = async (req, res) => {
     }
 }
 
-// UPDATE public.conveniences
-// 	SET id=?, name=?
-// 	WHERE <condition>;
-
-//     router.put("/list/:id", (req, res) => {
-//         let index = buscarIndex(req.params.id);
-//         list[index].nome = req.body.nome;
-//         list[index].cidade = req.body.cidade;
-// }
-
-export default { getAllConveniences, insertConvenience, deleteConvenience, updateConvenience };
+export default { selectAllConveniences, insertConvenience, deleteConvenience, updateConvenience };
