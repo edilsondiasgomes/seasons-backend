@@ -1,10 +1,30 @@
 import client from "./../database.js";
+import conveniencesController from "../controllers/conveniencesController.js";
+
 
 export const getAllAccommodations = async (req, res) => {
     try {
         const result = await client.query(`Select * FROM accommodations`);
-        const data = result.rows;
-        res.status(200).send(data);
+        const resultAccommodations = result.rows;
+        const accommodations = []
+
+        for (const accommodation of resultAccommodations) {
+
+            try {
+                const { id } = accommodation
+                const query = `Select id, name FROM conveniences c inner join accommodation_conveniences ac on c.id = ac.convenience_id WHERE ac.accommodation_id = $1`;
+                const values = [id];
+                const resultConveniences = await client.query(query, values);
+                const conveniencesPlace = resultConveniences.rows
+                const accommodationWithConveniences = { ...accommodation, conveniencesPlace }
+                accommodations.push(accommodationWithConveniences);
+
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        res.status(200).send(accommodations);
 
     } catch (error) {
         res.status(500).send('Erro ao buscar dados');
@@ -49,7 +69,7 @@ export const insertAccommodation = async (req, res) => {
 export const updateAccommodation = async (req, res) => {
     try {
         const { title, typeSelected, mainImage, street, houseNumber, complement, district, postalCode,
-            city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, initialDate, finalDate,
+            city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, conveniencesPlace, initialDate, finalDate,
             cleaningFee, dailyRate } = req.body
 
         const { id } = req.params
@@ -84,18 +104,28 @@ export const updateAccommodation = async (req, res) => {
 
         const result = await client.query(query, values)
         const accommodation = result.rows[0];
+
+        // conveniencias que vieram do front
+        const conveniencesFront = conveniencesPlace
+
+        // Buscando as conveniencias da acomodação no banco de dados
+        const conveniencesDataBase = await conveniencesController.selectConveniencesByID(id)
+
+        // conveniencias que foram tiradas no front. Excluir do banco
+        await conveniencesController.deleteConveniencesByID(id, conveniencesDataBase, conveniencesFront)
+
+        // conveniences que foram adicionadas no front. Inserir no banco
+        await conveniencesController.insertConveniencesByID(id, conveniencesFront, conveniencesDataBase)
+
         res.status(200).send(accommodation);
 
     } catch (error) {
         console.log(error);
-
         res.status(500).send('Erro ao editar acomodação!')
     }
 }
 
 export const deleteAccommodation = async (req, res) => {
-    console.log(req.body);
-
     try {
         const { id } = req.params;
         const query = `DELETE FROM accommodations WHERE id = $1`
