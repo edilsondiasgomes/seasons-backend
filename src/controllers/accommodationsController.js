@@ -1,7 +1,6 @@
 import client from "./../database.js";
 import conveniencesController from "../controllers/conveniencesController.js";
 
-
 export const getAllAccommodations = async (req, res) => {
     try {
         const result = await client.query(`Select * FROM accommodations`);
@@ -10,14 +9,28 @@ export const getAllAccommodations = async (req, res) => {
 
         for (const accommodation of resultAccommodations) {
 
+            let accommodationWithConveniences = [];
+
             try {
                 const { id } = accommodation
                 const query = `Select id, name FROM conveniences c inner join accommodation_conveniences ac on c.id = ac.convenience_id WHERE ac.accommodation_id = $1`;
                 const values = [id];
                 const resultConveniences = await client.query(query, values);
                 const conveniencesPlace = resultConveniences.rows
-                const accommodationWithConveniences = { ...accommodation, conveniencesPlace }
-                accommodations.push(accommodationWithConveniences);
+                accommodationWithConveniences = { ...accommodation, conveniencesPlace }
+
+            } catch (error) {
+                console.log(error);
+            }
+
+            try {
+                const { id } = accommodation
+                const query = `SELECT url FROM public.accommodation_files WHERE accommodation_id = $1`;
+                const values = [id];
+                const resultFiles = await client.query(query, values);
+                const files = resultFiles.rows
+                const accommodationsWithFiles = { ...accommodationWithConveniences, files }
+                accommodations.push(accommodationsWithFiles);
 
             } catch (error) {
                 console.log(error);
@@ -29,6 +42,7 @@ export const getAllAccommodations = async (req, res) => {
     } catch (error) {
         res.status(500).send('Erro ao buscar dados');
     }
+
 }
 
 export const insertAccommodation = async (req, res) => {
@@ -36,6 +50,8 @@ export const insertAccommodation = async (req, res) => {
         const { id, title, typeSelected, mainImage, street, houseNumber, complement, district, postalCode,
             city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, conveniencesPlace, initialDate, finalDate,
             cleaningFee, dailyRate } = req.body
+
+        const conveniences = JSON.parse(conveniencesPlace);
 
         const queryAccommodation = `INSERT INTO accommodations (title, "typeSelected", "mainImage", street, "houseNumber", complement, district, "postalCode",
             city, uf, country, "guestsAllowed", "checkIn", "checkOut", rooms, toilets, description, "initialDate", "finalDate",
@@ -51,16 +67,22 @@ export const insertAccommodation = async (req, res) => {
         const accommodation = result.rows[0];
         const accommodationId = accommodation.id;
 
+        // TODO: passar para conveniences controller
         const queryConveniences = `INSERT INTO accommodation_conveniences(accommodation_id, convenience_id) VALUES ($1, $2)`;
-
-        for (const convenience of conveniencesPlace) {
+        for (const convenience of conveniences) {
             await client.query(queryConveniences, [accommodationId, convenience.id]);
         }
+
+        const queryFiles = `INSERT INTO accommodation_files(accommodation_id, url) VALUES($1, $2)`;
+        // console.log(req.files);
+
+        req.files.forEach(async (file) => {
+            await client.query(queryFiles, [accommodationId, file.firebaseUrl])
+        });
 
         res.status(200).send(accommodation);
 
     } catch (error) {
-        console.log(req);
         console.log(error);
         res.status(500).send('Erro ao salvar acomodação!')
     }
@@ -112,10 +134,10 @@ export const updateAccommodation = async (req, res) => {
         const conveniencesDataBase = await conveniencesController.selectConveniencesByID(id)
 
         // conveniencias que foram tiradas no front. Excluir do banco
-        await conveniencesController.deleteConveniencesByID(id, conveniencesDataBase, conveniencesFront)
+        await conveniencesController.deleteConveniencesExcludedByID(id, conveniencesDataBase, conveniencesFront)
 
         // conveniences que foram adicionadas no front. Inserir no banco
-        await conveniencesController.insertConveniencesByID(id, conveniencesFront, conveniencesDataBase)
+        await conveniencesController.insertConveniencesAddedByID(id, conveniencesFront, conveniencesDataBase)
 
         res.status(200).send(accommodation);
 
