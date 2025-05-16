@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 import firebaseKey from "../config/firebase.key.json" assert { type: "json" };
-import { ref, deleteObject } from "firebase/storage";
 
 const BUCKET_ADDRESS = "seasons-71b90.firebasestorage.app"
 
@@ -11,15 +10,13 @@ admin.initializeApp({
 
 const bucket = admin.storage().bucket();
 
-export const uploadFile = async (req, res, next) => {
+export const uploadFiles = async (req, res, next) => {
 
     if (req.files.length < 1) {
         return next();
     }
 
     try {
-
-
         const uploadPromises = req.files.map(async (file) => {
 
             const nameFile = Date.now() + "." + file.originalname.split(".").pop();
@@ -52,26 +49,38 @@ export const uploadFile = async (req, res, next) => {
 
     } catch (error) {
         console.log(error);
-
-
     }
 }
 
-export const deleteFile = async (req, res) => {
+export const deleteAllFiles = async (req, res, next) => {
     try {
-        const { image } = req.body
+        const { files } = req.body
 
-        const file = bucket.file(image)
+        const deletePromises = files.map(async (image) => {
+            const imageURL = image.url.slice(image.url.lastIndexOf('/') + 1);
+            const file = bucket.file(imageURL);
+            await file.delete();
+        });
 
-        await file.delete();
-
-        return res.status(200).json({ message: 'Imagem excluída com sucesso' })
+        await Promise.all(deletePromises);
+        next();
 
     } catch (error) {
-        return res.status(500).json({ message: 'Não foi possível excluir a imagem' })
+        return res.status(500).json({ message: 'Não foi possível excluir as imagens' })
     }
+}
 
+export const deleteFile = async (imagem) => {
+    try {
+        const imageURL = imagem.url.slice(imagem.url.lastIndexOf('/') + 1);
+        const file = bucket.file(imageURL);
+        await file.delete();
+        
+    } catch (error) {
+        
+    }
+        
 
 }
 
-export default { uploadFile, deleteFile };
+export default { uploadFiles, deleteAllFiles, deleteFile };

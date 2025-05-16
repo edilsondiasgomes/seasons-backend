@@ -1,38 +1,64 @@
 import client from "./../database.js";
 import conveniencesController from "../controllers/conveniencesController.js";
+import filesController from "../controllers/filesController.js";
 
 export const getAllAccommodations = async (req, res) => {
+    const { city, initialDate, finalDate, guestsAllowed } = req.query
+
+    let values = [];
+    let condition = [];
+
+    if (city) {
+        values.push(city)
+        condition.push(`city=$${values.length}`)
+    }
+    if (initialDate) {
+        values.push(initialDate)
+        condition.push(`"initialDate"=$${values.length}`)
+    }
+    if (finalDate) {
+        values.push(finalDate)
+        condition.push(`"finalDate"=$${values.length}`)
+    }
+    if (guestsAllowed) {
+        values.push(guestsAllowed)
+        condition.push(`"guestsAllowed"=$${values.length}`)
+    }
+
+    let query = 'Select * FROM accommodations';
+
+    if (values.length > 0) {
+        query +=` WHERE ${condition.join(' AND ')}`
+    }
+
     try {
-        const result = await client.query(`Select * FROM accommodations`);
+        const result = await client.query(query, values);
         const resultAccommodations = result.rows;
         const accommodations = []
 
         for (const accommodation of resultAccommodations) {
 
+            const { id } = accommodation
             let accommodationWithConveniences = [];
 
             try {
-                const { id } = accommodation
-                const query = `Select id, name FROM conveniences c inner join accommodation_conveniences ac on c.id = ac.convenience_id WHERE ac.accommodation_id = $1`;
-                const values = [id];
-                const resultConveniences = await client.query(query, values);
-                const conveniencesPlace = resultConveniences.rows
+                // Buscar as conveniencias da acomodação
+                const conveniencesPlace = await conveniencesController.selectConveniencesAccommodationByID(id)
                 accommodationWithConveniences = { ...accommodation, conveniencesPlace }
 
             } catch (error) {
+                res.status(500).send('Erro ao buscar as conveniencias da acomodação!');
                 console.log(error);
             }
 
             try {
-                const { id } = accommodation
-                const query = `SELECT url FROM public.accommodation_files WHERE accommodation_id = $1`;
-                const values = [id];
-                const resultFiles = await client.query(query, values);
-                const files = resultFiles.rows
+                // Buscar as imagens da acomodação
+                const files = await filesController.getFilesAccommodation(id)
                 const accommodationsWithFiles = { ...accommodationWithConveniences, files }
                 accommodations.push(accommodationsWithFiles);
 
             } catch (error) {
+                res.status(500).send('Erro ao buscar imagens da acomodação!');
                 console.log(error);
             }
         }
@@ -41,13 +67,21 @@ export const getAllAccommodations = async (req, res) => {
 
     } catch (error) {
         res.status(500).send('Erro ao buscar dados');
+        console.log(error);
     }
+}
+
+export const getAccommodationBy = async (req, res) => {
+    const params = req.params
+    console.log(params);
+
+    const query = `SELECT * FROM accommodations WHERE city = $1`
 
 }
 
 export const insertAccommodation = async (req, res) => {
     try {
-        const { id, title, typeSelected, mainImage, street, houseNumber, complement, district, postalCode,
+        const { title, typeSelected, mainImage, street, houseNumber, complement, district, postalCode,
             city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, conveniencesPlace, initialDate, finalDate,
             cleaningFee, dailyRate } = req.body
 
@@ -58,7 +92,6 @@ export const insertAccommodation = async (req, res) => {
             "cleaningFee", "dailyRate") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             RETURNING *`;
 
-
         const values = [title, typeSelected, mainImage,
             street, houseNumber, complement, district, postalCode, city, uf, country, guestsAllowed, checkIn, checkOut,
             rooms, toilets, description, initialDate, finalDate, cleaningFee, dailyRate];
@@ -67,34 +100,40 @@ export const insertAccommodation = async (req, res) => {
         const accommodation = result.rows[0];
         const accommodationId = accommodation.id;
 
-        // TODO: passar para conveniences controller
-        const queryConveniences = `INSERT INTO accommodation_conveniences(accommodation_id, convenience_id) VALUES ($1, $2)`;
-        for (const convenience of conveniences) {
-            await client.query(queryConveniences, [accommodationId, convenience.id]);
+        try {
+            // Salvar conveniencias da acomodação
+            await conveniencesController.insertConveniencesToAccommodation(accommodationId, conveniences)
+
+        } catch (error) {
+            res.status(500).send('Erro ao salvar conveniencia!')
+            console.log(error);
         }
 
-        const queryFiles = `INSERT INTO accommodation_files(accommodation_id, url) VALUES($1, $2)`;
-        // console.log(req.files);
+        try {
+            // Salvar imagens da acomodação
+            await filesController.insertFilesAccommodation(accommodationId, req.files)
 
-        req.files.forEach(async (file) => {
-            await client.query(queryFiles, [accommodationId, file.firebaseUrl])
-        });
+        } catch (error) {
+            res.status(500).send('Erro ao salvar imagens!')
+            console.log(error);
+        }
 
         res.status(200).send(accommodation);
 
     } catch (error) {
-        console.log(error);
         res.status(500).send('Erro ao salvar acomodação!')
+        console.log(error);
     }
 }
 
 export const updateAccommodation = async (req, res) => {
     try {
         const { title, typeSelected, mainImage, street, houseNumber, complement, district, postalCode,
-            city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, conveniencesPlace, initialDate, finalDate,
+            city, uf, country, guestsAllowed, checkIn, checkOut, rooms, toilets, description, files, conveniencesPlace, initialDate, finalDate,
             cleaningFee, dailyRate } = req.body
 
-        const { id } = req.params
+        const { id } = req.params;
+        const conveniences = JSON.parse(conveniencesPlace);
 
         const query = `UPDATE accommodations SET 
         title = $1,
@@ -127,17 +166,46 @@ export const updateAccommodation = async (req, res) => {
         const result = await client.query(query, values)
         const accommodation = result.rows[0];
 
-        // conveniencias que vieram do front
-        const conveniencesFront = conveniencesPlace
+        // CONVENIENCIAS //////////////////////////////////
 
-        // Buscando as conveniencias da acomodação no banco de dados
+        // Conveniencias que vieram do front
+        const conveniencesFront = conveniences
+
+        // Conveniencias do banco de dados
         const conveniencesDataBase = await conveniencesController.selectConveniencesByID(id)
 
-        // conveniencias que foram tiradas no front. Excluir do banco
-        await conveniencesController.deleteConveniencesExcludedByID(id, conveniencesDataBase, conveniencesFront)
+        // Compara as conveniencias. Excluiu no front, excluir do banco
+        await conveniencesController.deleteConveniencesByIDExcludedFront(id, conveniencesDataBase, conveniencesFront)
 
-        // conveniences que foram adicionadas no front. Inserir no banco
-        await conveniencesController.insertConveniencesAddedByID(id, conveniencesFront, conveniencesDataBase)
+        // Compara as conveniencias. Inseriu no front, inserir no banco
+        await conveniencesController.insertConveniencesByIDAddedFront(id, conveniencesFront, conveniencesDataBase)
+
+        // IMAGENS ///////////////////////////////////////
+
+        // Imagens do front
+        const filesFront = Array.isArray(files) ? files.map(item => JSON.parse(item)) : [JSON.parse(files)];
+
+        // Imagens do banco de dados
+        const filesDataBase = await filesController.getFilesAccommodation(id)
+
+        // Compara as imagens. Excluiu do front, excluir do banco.
+        try {
+            await filesController.deleteFilesExcludedFront(id, filesDataBase, filesFront)
+
+        } catch (error) {
+            res.status(500).send('Erro ao excluir imagens!')
+            console.log(error);
+        }
+
+        // Adiciona imagens novas no banco
+        try {
+            await filesController.insertFilesAccommodation(id, req.files)
+
+        } catch (error) {
+            res.status(500).send('Erro ao salvar imagens!')
+            console.log(error);
+        }
+        // FIM IMAGENS ///////////////////////////////////////
 
         res.status(200).send(accommodation);
 
@@ -150,14 +218,13 @@ export const updateAccommodation = async (req, res) => {
 export const deleteAccommodation = async (req, res) => {
     try {
         const { id } = req.params;
-        const query = `DELETE FROM accommodations WHERE id = $1`
-        const values = [id]
-
-        const result = await client.query(query, values)
+        const result = await client.query(`DELETE FROM accommodations WHERE id = $1`, [id])
 
         if (result.rowCount === 0) {
             return res.send('Acomodação não encontrada!')
         }
+
+        await filesController.deleteFilesAccomodationByID(id)
 
         res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
 

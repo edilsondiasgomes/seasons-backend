@@ -1,18 +1,22 @@
 import express from "express";
 import accommodationsController from "../controllers/accommodationsController.js";
 import upload from "../middleware/multer.config.js";
-import { uploadFile, deleteFile } from "../services/firebase.service.js";
+import { uploadFiles, deleteAllFiles } from "../services/firebase.service.js";
+import verifyToken from "../middleware/verifyToken.js";
+
 
 const router = express.Router();
 
+// Lista as acomodações
 router.get("/", accommodationsController.getAllAccommodations);
 
-router.post("/", upload.array('files'), uploadFile, accommodationsController.insertAccommodation)
+// Cria uma acomodação
+router.post("/", upload.array('files'), uploadFiles, accommodationsController.insertAccommodation)
 
-router.delete("/image", deleteFile)
+// Edita uma acomodação
+router.put("/:id", upload.array('files'), uploadFiles, accommodationsController.updateAccommodation);
 
-router.put("/:id", accommodationsController.updateAccommodation);
-
-router.delete("/:id", accommodationsController.deleteAccommodation);
+// Exclui uma acomodação
+router.put("/delete/:id", deleteAllFiles, accommodationsController.deleteAccommodation);
 
 export default router;

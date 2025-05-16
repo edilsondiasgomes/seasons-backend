@@ -54,12 +54,34 @@ export const updateConvenience = async (req, res) => {
     }
 }
 
-export async function selectConveniencesByID(id) {
-    const result2 = await client.query('SELECT * From accommodation_conveniences WHERE accommodation_id = $1', [id]);
-    return result2.rows;
+// Seleciona as conveniencias da acomodação
+export async function selectConveniencesAccommodationByID(accommodationId) {
+    const query = `Select id, name FROM conveniences c inner join accommodation_conveniences ac on c.id = ac.convenience_id WHERE ac.accommodation_id = $1`;
+    const values = [accommodationId];
+    const result = await client.query(query, values);
+    return result.rows;
 }
 
-export async function deleteConveniencesExcludedByID(accommodationID, conveniencesDataBase, conveniencesFront) {
+// Insere as conveniencias da acomodação
+export async function insertConveniencesToAccommodation(accommodationId, conveniences) {
+    const queryConveniences = `INSERT INTO accommodation_conveniences(accommodation_id, convenience_id) VALUES ($1, $2)`;
+    for (const convenience of conveniences) {
+        await client.query(queryConveniences, [accommodationId, convenience.id]);
+    }
+}
+
+// Seleciona o id da conveniencia e o id da acomodação 
+export async function selectConveniencesByID(id) {
+    const result = await client.query('SELECT * From accommodation_conveniences WHERE accommodation_id = $1', [id]);
+    return result.rows;
+}
+
+export async function deleteConveniencesAccomodationByID(id) {
+    const result = await client.query(`DELETE from accommodation_conveniences WHERE accommodation_id = $1`, [id])
+    return result.rows
+}
+
+export async function deleteConveniencesByIDExcludedFront(accommodationID, conveniencesDataBase, conveniencesFront) {
     const conveniencesToDelete = conveniencesDataBase.filter(itemDataBase => !conveniencesFront.some(itemFront => itemFront.id === itemDataBase.convenience_id))
     const queryDeleteConveniences = `DELETE FROM accommodation_conveniences WHERE accommodation_id = $1 AND convenience_id = $2`;
 
@@ -68,7 +90,7 @@ export async function deleteConveniencesExcludedByID(accommodationID, convenienc
     }
 }
 
-export async function insertConveniencesAddedByID(accommodationID, conveniencesFront, conveniencesDataBase) {
+export async function insertConveniencesByIDAddedFront(accommodationID, conveniencesFront, conveniencesDataBase) {
     const conveniencesToAdd = conveniencesFront.filter(itemFront => !conveniencesDataBase.some(itemDataBase => itemDataBase.convenience_id === itemFront.id))
     const queryInsertConveniences = `INSERT INTO accommodation_conveniences(accommodation_id, convenience_id) VALUES ($1, $2)`;
 
@@ -78,7 +100,15 @@ export async function insertConveniencesAddedByID(accommodationID, conveniencesF
 }
 
 
-
-
-
-export default { selectAllConveniences, insertConvenience, deleteConvenience, updateConvenience, selectConveniencesByID, insertConveniencesAddedByID, deleteConveniencesExcludedByID };
+export default {
+    selectAllConveniences,
+    insertConvenience,
+    deleteConvenience,
+    updateConvenience,
+    selectConveniencesByID,
+    insertConveniencesByIDAddedFront,
+    deleteConveniencesByIDExcludedFront,
+    insertConveniencesToAccommodation,
+    selectConveniencesAccommodationByID,
+    deleteConveniencesAccomodationByID
+};
