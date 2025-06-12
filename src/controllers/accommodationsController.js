@@ -3,11 +3,15 @@ import conveniencesController from "../controllers/conveniencesController.js";
 import filesController from "../controllers/filesController.js";
 
 export const getAllAccommodations = async (req, res) => {
-    const { city, initialDate, finalDate, guestsAllowed } = req.query
+    const { city, initialDate, finalDate, guestsAllowed, id } = req.query
 
     let values = [];
     let condition = [];
 
+    if (id) {
+        values.push(id)
+        condition.push(`id=$${values.length}`)
+    }
     if (city) {
         values.push(city)
         condition.push(`city=$${values.length}`)
@@ -28,7 +32,7 @@ export const getAllAccommodations = async (req, res) => {
     let query = 'Select * FROM accommodations';
 
     if (values.length > 0) {
-        query +=` WHERE ${condition.join(' AND ')}`
+        query += ` WHERE ${condition.join(' AND ')}`
     }
 
     try {
@@ -183,7 +187,7 @@ export const updateAccommodation = async (req, res) => {
         // IMAGENS ///////////////////////////////////////
 
         // Imagens do front
-        const filesFront = Array.isArray(files) ? files.map(item => JSON.parse(item)) : [JSON.parse(files)];
+        const filesFront = Array.isArray(files) ? files.map(item => JSON.parse(item)) : (files ? [JSON.parse(files)] : []);
 
         // Imagens do banco de dados
         const filesDataBase = await filesController.getFilesAccommodation(id)
@@ -216,22 +220,29 @@ export const updateAccommodation = async (req, res) => {
 }
 
 export const deleteAccommodation = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await client.query(`DELETE FROM accommodations WHERE id = $1`, [id])
+    const { id } = req.params;
 
-        if (result.rowCount === 0) {
-            return res.send('Acomodação não encontrada!')
-        }
+    const result = await client.query(`SELECT * FROM reservations WHERE accommodation_id=$1`, [id])
 
-        await filesController.deleteFilesAccomodationByID(id)
-
-        res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).send(error)
+    if (result.rowCount > 0) {
+        res.status(200).json({ message: 'Acomodação não pode ser excluída pois há reservas!' })
     }
-}
 
-export default { getAllAccommodations, insertAccommodation, updateAccommodation, deleteAccommodation };
+        try {
+            const result = await client.query(`DELETE FROM accommodations WHERE id = $1`, [id])
+
+            if (result.rowCount === 0) {
+                return res.send('Acomodação não encontrada!')
+            }
+
+            await filesController.deleteFilesAccomodationByID(id)
+
+            res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
+
+        } catch (error) {
+            console.log(error);
+            res.status(500).send(error)
+        }
+    }
+
+    export default { getAllAccommodations, insertAccommodation, updateAccommodation, deleteAccommodation };

@@ -70,7 +70,7 @@ export const doLogin = async (req, res) => {
     return res.status(400).send('Senha inválida!')
   }
 
-  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' }
+  const token = jwt.sign({ userId: user.id, userName: user.name }, process.env.JWT_SECRET, { expiresIn: '1h' }
   );
 
   return res.status(200).json({ access_token: token })

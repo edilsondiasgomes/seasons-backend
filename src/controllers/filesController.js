@@ -28,7 +28,7 @@ export async function insertFilesAccommodation(accommodationId, files) {
 
 export async function deleteFilesAccomodationByID(id) {
     const result = await client.query(`DELETE from accommodation_files WHERE accommodation_id = $1`, [id])
-    return result.rows
+    // return result.rows
 }
 
 export async function filesToDelete(filesDataBase, filesFront) {
