@@ -4,7 +4,14 @@ import cors from "cors";
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: ['https://rentals-frontend-nine.vercel.app'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use((req, res, next) => {
   if (req.headers['content-type']?.startsWith('multipart/form-data')) {
     next(); 
