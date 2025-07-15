@@ -228,21 +228,26 @@ export const deleteAccommodation = async (req, res) => {
         res.status(200).json({ message: 'Acomodação não pode ser excluída pois há reservas!' })
     }
 
+    try {
+        const result = await client.query(`DELETE FROM accommodations WHERE id = $1`, [id])
+
+        if (result.rowCount === 0) {
+            return res.send('Acomodação não encontrada!')
+        }
         try {
-            const result = await client.query(`DELETE FROM accommodations WHERE id = $1`, [id])
-
-            if (result.rowCount === 0) {
-                return res.send('Acomodação não encontrada!')
-            }
-
             await filesController.deleteFilesAccomodationByID(id)
-
             res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
 
         } catch (error) {
             console.log(error);
             res.status(500).send(error)
-        }
-    }
 
-    export default { getAllAccommodations, insertAccommodation, updateAccommodation, deleteAccommodation };
+        }
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error)
+    }
+}
+
+export default { getAllAccommodations, insertAccommodation, updateAccommodation, deleteAccommodation };
