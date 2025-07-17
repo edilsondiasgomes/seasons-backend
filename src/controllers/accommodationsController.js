@@ -225,7 +225,7 @@ export const deleteAccommodation = async (req, res) => {
     const result = await client.query(`SELECT * FROM reservations WHERE accommodation_id=$1`, [id])
 
     if (result.rowCount > 0) {
-        return res.status(200).json({ message: 'Acomodação não pode ser excluída pois há reservas!' })
+        return res.status(500).json({ message: 'Acomodação não pode ser excluída pois há reservas!' })
     }
 
     try {
