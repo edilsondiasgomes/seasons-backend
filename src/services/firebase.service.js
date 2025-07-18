@@ -79,7 +79,6 @@ export const deleteAllFiles = async (req, res, next) => {
         next();
 
     } catch (error) {
-        next();
         return res.status(500).json({ message: 'Não foi possível excluir as imagens' })
     }
 }
