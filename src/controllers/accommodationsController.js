@@ -197,7 +197,7 @@ export const updateAccommodation = async (req, res) => {
             await filesController.deleteFilesExcludedFront(id, filesDataBase, filesFront)
 
         } catch (error) {
-            res.status(500).send('Erro ao excluir imagens!')
+            return res.status(500).send('Erro ao excluir imagens!')
             console.log(error);
         }
 
@@ -206,7 +206,7 @@ export const updateAccommodation = async (req, res) => {
             await filesController.insertFilesAccommodation(id, req.files)
 
         } catch (error) {
-            res.status(500).send('Erro ao salvar imagens!')
+            return res.status(500).send('Erro ao salvar imagens!')
             console.log(error);
         }
         // FIM IMAGENS ///////////////////////////////////////
@@ -215,7 +215,7 @@ export const updateAccommodation = async (req, res) => {
 
     } catch (error) {
         console.log(error);
-        res.status(500).send('Erro ao editar acomodação!')
+        return res.status(500).send('Erro ao editar acomodação!')
     }
 }
 
