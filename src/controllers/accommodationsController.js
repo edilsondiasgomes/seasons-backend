@@ -1,6 +1,8 @@
 import client from "./../database.js";
 import conveniencesController from "../controllers/conveniencesController.js";
 import filesController from "../controllers/filesController.js";
+import { deleteAllFiles } from "../services/firebase.service.js";
+
 
 export const getAllAccommodations = async (req, res) => {
     const { city, initialDate, finalDate, guestsAllowed, id } = req.query
@@ -236,6 +238,7 @@ export const deleteAccommodation = async (req, res) => {
         }
         try {
             await filesController.deleteFilesAccomodationByID(id)
+            deleteAllFiles
             return res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
 
         } catch (error) {

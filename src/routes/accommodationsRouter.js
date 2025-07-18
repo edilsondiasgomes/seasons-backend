@@ -17,6 +17,6 @@ router.post("/", upload.array('files'), uploadFiles, accommodationsController.in
 router.put("/:id", upload.array('files'), uploadFiles, accommodationsController.updateAccommodation);
 
 // Exclui uma acomodação
-router.put("/delete/:id", deleteAllFiles, accommodationsController.deleteAccommodation);
+router.put("/delete/:id", accommodationsController.deleteAccommodation);
 
 export default router;

@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 
+
 const firebaseKey = {
     type: process.env.FIREBASE_TYPE,
     project_id: process.env.FIREBASE_PROJECT_ID,
@@ -66,6 +67,7 @@ export const uploadFiles = async (req, res, next) => {
 }
 
 export const deleteAllFiles = async (req, res, next) => {
+
     try {
         const { files } = req.body
 
