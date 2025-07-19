@@ -69,7 +69,7 @@ export const uploadFiles = async (req, res, next) => {
 export const deleteAllFiles = async (req, res, next) => {
 
     try {
-        const { files } = req.body
+        const { files } = req.filesToDelete
 
         const deletePromises = files.map(async (image) => {
             const imageURL = image.url.slice(image.url.lastIndexOf('/') + 1);

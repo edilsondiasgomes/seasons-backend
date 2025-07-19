@@ -221,8 +221,9 @@ export const updateAccommodation = async (req, res) => {
     }
 }
 
-export const deleteAccommodation = async (req, res) => {
+export const deleteAccommodation = async (req, res, next) => {
     const { id } = req.params;
+    const { files } = req.body
 
     const result = await client.query(`SELECT * FROM reservations WHERE accommodation_id=$1`, [id])
 
@@ -238,7 +239,8 @@ export const deleteAccommodation = async (req, res) => {
         }
         try {
             await filesController.deleteFilesAccomodationByID(id)
-            // deleteAllFiles
+            req.filesToDelete = files
+            next()
             return res.status(200).json({ message: 'Acomodação excluída com sucesso!' });
 
         } catch (error) {
