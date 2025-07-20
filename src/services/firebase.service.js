@@ -78,7 +78,8 @@ export const deleteAllFiles = async (req, res, next) => {
         });
 
         await Promise.all(deletePromises);
-        next();
+        // next();
+        return res.status(200).json({ message: 'Acomodação excluída com sucesso!' })
 
     } catch (error) {
         return res.status(500).json({ message: 'Não foi possível excluir as imagens' })
