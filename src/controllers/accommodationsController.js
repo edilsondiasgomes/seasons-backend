@@ -237,9 +237,16 @@ export const deleteAccommodation = async (req, res, next) => {
         if (result.rowCount === 0) {
             return res.send('Acomodação não encontrada!')
         }
-        await filesController.deleteFilesAccomodationByID(id)
-        req.filesToDelete = files
-        next()
+        try {
+            await filesController.deleteFilesAccomodationByID(id)
+            req.filesToDelete = files
+            next()
+
+        } catch (error) {
+            console.log(error);
+            return res.status(500).send(error)
+
+        }
 
     } catch (error) {
         console.log(error);
