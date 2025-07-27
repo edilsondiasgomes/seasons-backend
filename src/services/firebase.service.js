@@ -1,11 +1,10 @@
 import admin from "firebase-admin";
 
-
 const firebaseKey = {
     type: process.env.FIREBASE_TYPE,
     project_id: process.env.FIREBASE_PROJECT_ID,
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/gm, "\n") : undefined,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').trim(),
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
     client_id: process.env.FIREBASE_CLIENT_ID,
     auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -13,7 +12,9 @@ const firebaseKey = {
     auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
     client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL,
     universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
+
 };
+
 
 const BUCKET_ADDRESS = "seasons-71b90.firebasestorage.app"
 
@@ -21,6 +22,7 @@ admin.initializeApp({
     credential: admin.credential.cert(firebaseKey),
     storageBucket: BUCKET_ADDRESS
 });
+
 
 const bucket = admin.storage().bucket();
 
@@ -67,9 +69,9 @@ export const uploadFiles = async (req, res, next) => {
 }
 
 export const deleteAllFiles = async (req, res, next) => {
+   const files = req.filesToDelete;
 
     try {
-        const { files } = req.filesToDelete
 
         const deletePromises = files.map(async (image) => {
             const imageURL = image.url.slice(image.url.lastIndexOf('/') + 1);
@@ -78,7 +80,7 @@ export const deleteAllFiles = async (req, res, next) => {
         });
 
         await Promise.all(deletePromises);
-        next();
+        return res.status(200).json({ message: 'Acomodação excluída com sucesso!' })
 
     } catch (error) {
         return res.status(500).json({ message: 'Não foi possível excluir as imagens' })
