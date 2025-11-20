@@ -1,7 +1,7 @@
 import client from "./../database.js";
 import conveniencesController from "../controllers/conveniencesController.js";
 import filesController from "../controllers/filesController.js";
-import { deleteAllFiles } from "../services/firebase.service.js";
+import reservationController from "./reservationController.js";
 
 
 export const getAllAccommodations = async (req, res) => {
@@ -15,34 +15,36 @@ export const getAllAccommodations = async (req, res) => {
         condition.push(`id=$${values.length}`)
     }
     if (city) {
-        values.push(city)
-        condition.push(`city=$${values.length}`)
+        values.push(`%${city}%`);
+        condition.push(`city ILIKE $${values.length}`);
     }
-    if (initialDate) {
-        values.push(initialDate)
-        condition.push(`"initialDate"=$${values.length}`)
-    }
-    if (finalDate) {
-        values.push(finalDate)
-        condition.push(`"finalDate"=$${values.length}`)
-    }
+    
     if (guestsAllowed) {
         values.push(guestsAllowed)
         condition.push(`"guestsAllowed"=$${values.length}`)
     }
 
-    let query = 'Select * FROM accommodations';
-
+    let query = `SELECT a.* FROM accommodations a`;
+    
     if (values.length > 0) {
         query += ` WHERE ${condition.join(' AND ')}`
     }
 
+    if (initialDate && finalDate) {
+        values.push(initialDate)
+        values.push(finalDate)
+
+        query += condition.length > 0 ? ' AND ': ' WHERE ';
+
+        query += `NOT EXISTS (SELECT 1 FROM reservations r WHERE r.accommodation_id = a.id AND r.initial_date <= $${values.length - 1} AND r.final_date >= $${values.length})`
+    }
+
     try {
         const result = await client.query(query, values);
-        const resultAccommodations = result.rows;
+        const resultRows = result.rows;
         const accommodations = []
 
-        for (const accommodation of resultAccommodations) {
+        for (const accommodation of resultRows) {
 
             const { id } = accommodation
             let accommodationWithConveniences = [];
@@ -66,6 +68,14 @@ export const getAllAccommodations = async (req, res) => {
             } catch (error) {
                 res.status(500).send('Erro ao buscar imagens da acomodação!');
                 console.log(error);
+            }
+
+            try {
+                //Buscar as reservas da acomodação
+                const reservations = await reservationController.getReservationByAccommodation(id)
+
+            } catch (error) {
+
             }
         }
 

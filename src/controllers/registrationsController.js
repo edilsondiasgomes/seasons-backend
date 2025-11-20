@@ -18,6 +18,20 @@ export const getAllRegistrations = async (req, res) => {
 
 };
 
+export const getNameRegistrationById = async (req, res) =>{
+  try {
+    const id = req.body
+    const query = `SELECT name FROM registrations WHERE id = $1`
+    const result = await client.query(query, [id])
+    const name = result.rows
+    console.log(name);
+        
+  } catch (error) {
+    res.status(400).send('Usuário não encontrato!')
+  }
+
+}
+
 export const getRegistrationById = async (req, res) => {
   try {
     const id = req.params.id
@@ -62,7 +76,7 @@ export const doLogin = async (req, res) => {
   const user = result.rows[0];
 
   if (!user) {
-    return res.status(400).send('Usuário não cadastrado!')
+    return res.status(400).json({message:'Usuário não cadastrado!'});
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password)

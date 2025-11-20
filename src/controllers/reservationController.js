@@ -19,18 +19,6 @@ export const createReservation = async (req, res) => {
     }
 }
 
-function setDataReservation(item) {
-    return {
-        registrationId: item.id,
-        accommodationId: item.accommodation_id,
-        userId: item.user_id,
-        initialDate: item.initial_date,
-        finalDate: item.final_date,
-        quantityDaily: item.quantity_daily,
-        amount: item.amount,
-        guests: item.guests,
-    }
-}
 
 export const listReservations = async (req, res) => {
 
@@ -38,11 +26,11 @@ export const listReservations = async (req, res) => {
     const result = await client.query(query)
     const reservations = result.rows
 
-    const r = reservations.map(item => {
+    const reservationsParsed = await Promise.all(reservations.map(item => {
         return setDataReservation(item)
-    })
+    }))
 
-    return res.status(200).send(r)
+    return res.status(200).send(reservationsParsed)
 }
 
 export const getReservationByUser = async (req, res) => {
@@ -52,11 +40,45 @@ export const getReservationByUser = async (req, res) => {
     const result = await client.query(query, [id])
     const reservations = result.rows
 
-    const reservationsParsed = reservations.map(item => {
+    const reservationsParsed = await Promise.all(reservations.map(item => {
         return setDataReservation(item)
-    })
-
+    }))
+    
     res.status(200).send(reservationsParsed)
+}
+
+export const setDataReservation = async (item) => {
+    const name = await getNameRegistration(item.user_id)
+
+    try {
+        const items = {
+            registrationId: item.id,
+            accommodationId: item.accommodation_id,
+            userId: item.user_id,
+            userName: name,
+            initialDate: item.initial_date,
+            finalDate: item.final_date,
+            quantityDaily: item.quantity_daily,
+            amount: item.amount,
+            guests: item.guests,
+        }
+        return items
+
+    } catch (error) {
+        res.status(400).send({ message: 'Erro buscar a reserva!', error: error })
+    }
+}
+
+export async function getNameRegistration(id) {
+    try {
+        const query = `SELECT name FROM registrations WHERE id = $1`
+        const result = await client.query(query, [id])
+        const name = result.rows[0].name
+        return name
+
+    } catch (error) {
+        res.status(400).send({ message: 'Erro buscar o nome!', error: error })
+    }
 }
 
 export const getReservationByAccommodation = async (req, res) => {
